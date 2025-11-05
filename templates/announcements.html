@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>吉大公告中心(PRO)</title>
+    <style>
+        /* --- 基础样式与背景 --- */
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            /* 背景图片设置 (请替换为您的URL) */
+            background-image: url('{{ url_for('static', filename='bg.jpg') }}');
+            background-size: cover; 
+            background-position: center center; 
+            background-attachment: fixed; 
+            background-repeat: no-repeat; 
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header {
+            background-color: rgba(255, 255, 255, 0.85);
+            padding: 15px 20px;
+            border-bottom: 2px solid #0056b3;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header h1 { color: #0056b3; font-size: 26px; margin: 0; text-align: center; }
+        .search-filter {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .search-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .search-input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        .search-button, .filter-select {
+             padding: 10px; border: 1px solid #ccc; border-radius: 4px;
+             background-color: #f7f7f7; cursor: pointer;
+        }
+        .tags-container { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px dashed #ddd; padding-top: 15px; }
+        .tag-filter {
+            background-color: #e0f7fa; color: #00796b; padding: 5px 10px;
+            border-radius: 15px; font-size: 13px; cursor: pointer; transition: background-color 0.2s;
+        }
+        .tag-filter:hover { background-color: #b2ebf2; }
+        
+        /* --- 
+         * --- ！！！这就是你需要添加的修复！！！ --- 
+         * --- */
+        .tag-filter.active {
+             background-color: #0056b3; /* 使用主题色 */
+             color: #ffffff;           /* 白色文字 */
+             font-weight: bold;        /* 字体加粗 */
+        }
+        /* -------------------------------------- */
+        
+        .announcement-list {
+            background-color: rgba(255, 255, 255, 0.9); border-radius: 5px;
+            overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .announcement-item {
+            display: flex; align-items: center; padding: 15px 20px;
+            border-bottom: 1px solid #eee; transition: background-color 0.2s;
+            text-decoration: none; color: inherit;
+        }
+        .announcement-item:hover { background-color: rgba(240, 248, 255, 0.9); }
+        .title-section {
+            flex-grow: 1; width: 60%; display: flex;
+            flex-direction: column; align-items: flex-start;
+        }
+        .unit-section { width: 20%; text-align: center; }
+        .time-section { width: 20%; text-align: right; }
+        .announcement-title-row { display: flex; align-items: center; flex-wrap: wrap; }
+        .announcement-title { font-size: 16px; font-weight: bold; color: #2c3e50; line-height: 1.5; margin-right: 15px; }
+        .title-tags { display: flex; gap: 6px; }
+        .tag-primary {
+            background-color: #0056b3; color: #ffffff; padding: 2px 6px;
+            border-radius: 3px; font-size: 12px; font-weight: bold;
+        }
+        .tag-secondary {
+            background-color: #ffecb3; color: #f57f17; padding: 2px 6px;
+            border-radius: 3px; font-size: 12px; font-weight: normal;
+        }
+        .meta-unit { color: #555; }
+        .meta-time { color: #999; }
+        .pagination {
+            text-align: center; padding: 20px 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 5px; margin-top: 20px;
+        }
+        .pagination a, .pagination span {
+            text-decoration: none; color: #0056b3; padding: 8px 12px;
+            border: 1px solid #ddd; margin: 0 4px; border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .pagination a:hover { background-color: #e0f7fa; }
+        .pagination .current { background-color: #0056b3; color: white; border-color: #0056b3; font-weight: bold; }
+        @media (max-width: 768px) {
+            .announcement-item { flex-direction: column; align-items: flex-start; }
+            .search-row { flex-direction: column; }
+            .search-button, .filter-select { width: 100%; }
+            .title-section, .unit-section, .time-section { width: 100%; text-align: left; margin-bottom: 5px; }
+            .unit-section, .time-section { display: none; }
+            .announcement-title-row { flex-direction: column; align-items: flex-start; }
+            .announcement-title { margin-right: 0; }
+        }
+/* --- 底部固定提示栏样式 (浅蓝色半透明版本) --- */
+#fixedNoticeBar {
+    position: fixed; 
+    bottom: 0;      
+    left: 0;        
+    width: 100%;    
+    /* 核心修改：使用 rgba 实现半透明的浅蓝色 */
+    background-color: rgba(173, 216, 230, 0.9); /* 浅蓝色 (LightBlue) + 90% 不透明度 */
+    color: #0056b3; /* 使用页面的主题深蓝色，提高可读性 */
+    text-align: center;
+    padding: 8px 0;
+    font-size: 14px;
+    z-index: 1000; /* 确保它位于其他元素之上 */
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+}
+
+#fixedNoticeBar p {
+    margin: 0; /* 移除段落的默认边距 */
+    font-weight: bold; /* 略微加粗，让文字更清晰 */
+}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>吉林大学信息公告中心</h1>
+    </div>
+
+    <div class="container">
+        <div class="search-filter">
+            <div class="search-row">
+                <input type="text" id="searchKeyword" class="search-input" placeholder="输入标题或发布单位进行搜索...">
+                <button class="search-button">搜索</button>
+                <select id="filterUnit" class="filter-select">
+                    <option value="">按单位筛选 (所有)</option>
+                    </select>
+                <select id="filterTime" class="filter-select">
+                    <option value="time_desc">按时间筛选 (最新)</option>
+                    <option value="time_asc">按时间升序</option>
+                </select>
+            </div>
+            
+            <div id="tagFilterContainer" class="tags-container">
+                </div>
+        </div>
+
+        <div id="announcementList" class="announcement-list">
+            <p style="text-align: center; padding: 20px;">正在加载公告信息...</p>
+        </div> 
+        
+        <div id="paginationContainer" class="pagination">
+            </div>
+    </div>
+
+
+<script>
+    // --- API 配置 ---
+    const API_BASE_URL = ''; 
+    const LIST_ENDPOINT = '/api/announcements';
+    const FILTERS_ENDPOINT = '/api/filters';
+    
+    // --- 全局状态：追踪当前激活的标签 ---
+    let activeTags = []; 
+    let filterCache = null; // 缓存筛选数据
+
+    // --- DOM 元素引用 ---
+    const listContainer = document.getElementById('announcementList');
+    const paginationContainer = document.getElementById('paginationContainer');
+    const tagFilterContainer = document.getElementById('tagFilterContainer');
+    const filterUnitSelect = document.getElementById('filterUnit');
+    const MAX_SECONDARY_TAGS = 5; 
+
+    // --- 辅助函数：将时间戳转换为 YYYY-MM-DD 格式 ---
+    function dateFromTimestamp(timestamp) {
+        const date = new Date(timestamp * 1000);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    // --- 辅助函数：创建单个公告项的 HTML ---
+    function createAnnouncementItem(announcement) {
+        const item = document.createElement('a');
+        item.className = 'announcement-item';
+        item.href = announcement.link; 
+	item.target = "_blank";
+
+        let tagsHtml = `<span class="tag-primary">${announcement.tag_primary}</span>`;
+        announcement.tags_secondary.slice(0, 2).forEach(tag => {
+            tagsHtml += `<span class="tag-secondary">${tag}</span>`;
+        });
+        
+        item.innerHTML = `
+            <div class="title-section">
+                <div class="announcement-title-row">
+                    <span class="announcement-title">${announcement.title}</span>
+                    <div class="title-tags">${tagsHtml}</div>
+                </div>
+                <div class="announcement-meta meta-time meta-unit">${announcement.unit} · ${announcement.date || dateFromTimestamp(announcement.timestamp)}</div>
+            </div>
+            <div class="unit-section meta-unit">${announcement.unit}</div>
+            <div class="time-section meta-time">${announcement.date || dateFromTimestamp(announcement.timestamp)}</div>
+        `;
+        return item;
+    }
+
+    // --- 核心渲染函数：渲染列表和分页 ---
+    function renderListAndPagination(apiData) {
+        const data = apiData.data;
+        listContainer.innerHTML = ''; 
+
+        if (data.announcements && data.announcements.length > 0) {
+            data.announcements.forEach(announcement => {
+                listContainer.appendChild(createAnnouncementItem(announcement));
+            });
+        } else {
+            listContainer.innerHTML = '<p style="text-align: center; padding: 20px;">未找到匹配的公告信息。</p>';
+        }
+
+        // 渲染分页控件 (简化版，确保功能正确)
+        paginationContainer.innerHTML = '';
+        const { currentPage, totalPages } = data;
+
+        // 上一页/下一页/页码渲染...
+        if (currentPage > 1) {
+            paginationContainer.innerHTML += `<a href="#" onclick="loadAnnouncements(${currentPage - 1}); return false;">« 上一页</a>`;
+        } else {
+             paginationContainer.innerHTML += `<span class="meta-time">« 上一页</span>`;
+        }
+        
+        const maxPagesToShow = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+        if (endPage - startPage < maxPagesToShow - 1) {
+             startPage = Math.max(1, endPage - maxPagesToShow + 1);
+        }
+
+        if (startPage > 1) { paginationContainer.innerHTML += `<span>...</span>`; }
+
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === currentPage) {
+                paginationContainer.innerHTML += `<span class="current">${i}</span>`;
+            } else {
+                paginationContainer.innerHTML += `<a href="#" onclick="loadAnnouncements(${i}); return false;">${i}</a>`;
+            }
+        }
+        
+        if (endPage < totalPages) { paginationContainer.innerHTML += `<span>...</span>`; }
+
+        if (currentPage < totalPages) {
+            paginationContainer.innerHTML += `<a href="#" onclick="loadAnnouncements(${currentPage + 1}); return false;">下一页 »</a>`;
+        } else {
+             paginationContainer.innerHTML += `<span class="meta-time">下一页 »</span>`;
+        }
+    }
+
+    // --- 辅助函数：渲染 TAG 筛选云 (使用 data 属性) ---
+    function renderTagFilters(filterData) {
+        tagFilterContainer.innerHTML = '';
+        
+        // 辅助函数：创建 TAG 元素并设置激活状态
+        const createTagElement = (tag, type) => {
+            const span = document.createElement('span');
+            const isActive = activeTags.includes(tag.name); 
+            
+            span.className = `tag-filter ${type} ${isActive ? 'active' : ''}`; 
+            span.textContent = `${tag.name} (${tag.count})`;
+            
+            // *** 核心：添加 data-tag 属性用于事件代理识别 ***
+            span.setAttribute('data-tag', tag.name); 
+            // ******************************************************
+            
+            tagFilterContainer.appendChild(span);
+            return span;
+        };
+
+        // 1. 渲染一级 TAGs
+        filterData.tags_primary.forEach(tag => { createTagElement(tag, 'tag-primary-filter'); });
+        
+        // 2. 渲染热门二级 TAGs
+        filterData.tags_secondary_all.slice(0, MAX_SECONDARY_TAGS).forEach(tag => {
+            createTagElement(tag, 'tag-secondary-filter'); 
+        });
+        
+        // 3. 添加更多按钮
+        if (filterData.tags_secondary_all.length > MAX_SECONDARY_TAGS) {
+            tagFilterContainer.innerHTML += `<span class="tag-filter" onclick="alert('TODO: 此处应打开模态框显示全部TAGs，或启用TAG搜索')">...更多TAG</span>`;
+        }
+        
+        // 4. 填充单位筛选下拉菜单 
+        if (filterUnitSelect.options.length <= 1) {
+            filterData.units.forEach(unit => {
+                filterUnitSelect.innerHTML += `<option value="${unit.name}">${unit.name} (${unit.count})</option>`;
+            });
+        }
+    }
+
+    // --- 核心函数：处理标签点击事件 (通用逻辑) ---
+    function applyTagFilter(tagName, element) {
+        console.log(`DEBUG: Tag clicked: ${tagName}`); 
+        
+        const index = activeTags.indexOf(tagName);
+        
+        if (index > -1) {
+            activeTags.splice(index, 1);
+            element.classList.remove('active');
+            console.log(`DEBUG: Removed tag. New activeTags:`, activeTags);
+        } else {
+            activeTags.push(tagName);
+            element.classList.add('active');
+            console.log(`DEBUG: Added tag. New activeTags:`, activeTags);
+        }
+        
+        // 重新加载第一页数据
+        loadAnnouncements(1); 
+    }
+
+    // --- 核心函数：根据筛选条件加载公告 (包含调试) ---
+    async function loadAnnouncements(page = 1) {
+        const keyword = document.getElementById('searchKeyword').value;
+        const unit = filterUnitSelect.value;
+        const sort = document.getElementById('filterTime').value;
+        
+        // --- 构建 API 请求参数 ---
+        const params = new URLSearchParams({
+            page: page,
+            size: 20, 
+            sort: sort,
+        });
+        
+        // --- 调试信息 ---
+        console.log("DEBUG: Active Tags array before API call:", activeTags);
+        
+        if (keyword) params.append('keyword', keyword);
+        if (unit) params.append('unit', unit);
+        
+        // 附加激活的标签参数
+        if (activeTags.length > 0) {
+             params.append('tags', activeTags.join(','));
+        }
+        
+        const fetchURL = `${API_BASE_URL}${LIST_ENDPOINT}?${params.toString()}`;
+        console.log("DEBUG: Fetching URL:", fetchURL);
+        
+        // --- 开始 Fetch ---
+        listContainer.innerHTML = '<p style="text-align: center; padding: 20px;">正在加载中...</p>';
+        paginationContainer.innerHTML = '';
+
+        try {
+            const response = await fetch(fetchURL);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
+            const data = await response.json();
+            
+            // 渲染公告列表和分页
+            renderListAndPagination(data);
+            
+            // 重新渲染筛选器以确保标签激活状态正确 (即使是事件代理也需要)
+            if (filterCache) {
+                 renderTagFilters(filterCache);
+            }
+            
+        } catch (error) {
+            console.error("加载公告失败:", error);
+            listContainer.innerHTML = '<p style="text-align: center; padding: 20px; color: red;">加载公告信息失败，请检查API服务器是否运行正常。</p>';
+        }
+    }
+    
+    // --- 加载筛选条件 ---
+    async function loadFilters() {
+        if (filterCache) {
+            renderTagFilters(filterCache);
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}${FILTERS_ENDPOINT}`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
+            const data = await response.json();
+            filterCache = data.data; // 缓存数据
+            renderTagFilters(filterCache);
+        } catch (error) {
+            console.error("加载筛选条件失败:", error);
+        }
+    }
+
+
+    // 页面加载完成后执行 (稳定版本，包含事件代理)
+    window.onload = function() {
+        // 1. 启动时加载筛选条件 (填充TAG云和单位下拉菜单)
+        loadFilters();
+        
+        // 2. 启动时加载第一页公告列表 
+        loadAnnouncements(1); 
+        
+        // 3. 绑定筛选/搜索的事件 
+        document.querySelector('.search-button').onclick = () => loadAnnouncements(1);
+        filterUnitSelect.onchange = () => loadAnnouncements(1);
+        document.getElementById('filterTime').onchange = () => loadAnnouncements(1);
+        
+        // *** 核心修复：事件代理 (Event Delegation) ***
+        tagFilterContainer.addEventListener('click', (event) => {
+            const clickedElement = event.target;
+            // 检查点击的元素是否是 tag-filter 且具有 data-tag 属性
+            if (clickedElement.classList.contains('tag-filter') && clickedElement.hasAttribute('data-tag')) {
+                const tagName = clickedElement.getAttribute('data-tag');
+                // 调用 applyTagFilter
+                applyTagFilter(tagName, clickedElement);
+            }
+        });
+        // *****************************************
+    }
+</script>
+
+
+<div id="fixedNoticeBar">
+    <p>⚠️ 校园网提示： 由于认证问题，点击新闻可能无法直接跳转至正文（可尝试刷新页面）。</p>
+</div>
+</body>
+</html>
